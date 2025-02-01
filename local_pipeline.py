@@ -32,7 +32,7 @@ def run_pipeline():
             | "Local Cycle Hire Data" >> beam.Create(cycle_hire_data) # this is used to create data locally
             | "Create Pairs" >> beam.Map(lambda x: (x['start_station_id'], x['end_station_id']))
             | "Count Rides" >> beam.combiners.Count.PerElement()
-            | "Format Ride Output" >> beam.Map(lambda x: { 'start_station_id': x[0][0], 'end_station_id': x[0][1], 'ride_count': x[1]})
+            | "Format Ride Output" >> beam.Map(lambda x: f"{x[0][0]},{x[0][1]},{x[1]}")
             | "Print Ride Counts" >> beam.Map(print)  # print instead of writing to BigQuery
         )
 
