@@ -54,10 +54,37 @@ def run_easy_pipeline():
             | "Print Ride Counts" >> beam.Map(print)  # print instead of writing to BigQuery or push to GCP
         )
 
+def run_hard_pipeline():
+    options = PipelineOptions(
+        runner='DirectRunner'  # this is uset to run locally. On GCP we would use DataFlow
+    )
+    
+    with beam.Pipeline(options=options) as pipeline:
+
+        stations = (
+            pipeline
+            | "Local stations" >> beam.Create(stations_data)
+            | 'Make station dict' >> beam.Map(
+                lambda row: (row['id'], (float(row['latitude']), float(row['longitude'])))
+            ) )
+        stations_dict = beam.pvalue.AsDict(stations)
+
+        cycle_hires = pipeline | "Local Cycle Hire Data" >> beam.Create(cycle_hire_data) # this is used to create data locally
+        
+
+        # Process and aggregate distances
+        station_distances = (
+            cycle_hires
+            | "Calculate Distances" >> beam.Map(calculate_station_distance, stations_dict=stations_dict)
+            | "Sum Distances" >> beam.CombinePerKey(sum)
+            | "Format Distance Output" >> beam.Map(lambda x: f"{x[0][0]},{x[0][1]},{x[1]:.2f}")
+            | "Print Distasnces" >> beam.Map(print)  # Print instead of writing to BigQuery
+       )
 
 
 
 
 if __name__ == "__main__":
     run_easy_pipeline()
+    run_hard_pipeline()
     
