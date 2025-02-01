@@ -19,26 +19,26 @@ cycle_hire_data = [
 ]
 
 
-def calculate_station_distance(stations, cycle_hire):
+def calculate_station_distance(trip, stations_dict):
 
-    station_locations = {s['id']: (s['latitude'], s['longitude']) for s in stations}  # dictionary that will be use to calclate distance between stations
-    
-    for trip in cycle_hire:
-        start_id = trip['start_station_id'] # get ids from the trip
-        end_id = trip['end_station_id']
-        
-        if start_id not in station_locations or end_id not in station_locations: # Quality check: ignore/consider what happens if there is no start or end
-            continue
-        
-        start_location = station_locations[start_id] # this is a tuple with the location
-        end_location = station_locations[end_id] # this is a tuple
+    # get ids from the trip
+    start_id = trip['start_station_id']
+    end_id = trip['end_station_id']
+
+    # Get locations
+    start_location = stations_dict.get(start_id, None) # this is a tuple with the location
+    end_location =  stations_dict.get(end_id, None) # use method get in case we don't find it get a None
+
+
+    if start_location and end_location:
+        # Get distane
         distance = geodesic(start_location, end_location).kilometers  # Using function from geopy. This was a hint from ML6 from the setup.py
-        
-        yield ((start_id, end_id), distance)  # We use Yield instead of return so that we get a generator not a full list, that wya it works with apache beam
+        # We use Yield instead of return so that we get a generator not a full list, that wya it works with apache beam
+        return ((start_id, end_id), distance)  
 
 
 # Define the pipeline
-def run_pipeline():
+def run_easy_pipeline():
     options = PipelineOptions(
         runner='DirectRunner'  # this is uset to run locally. On GCP we would use DataFlow
     )
@@ -55,10 +55,9 @@ def run_pipeline():
         )
 
 
-if __name__ == "__main__":
-    run_pipeline()
 
-    station_locations = create_station_location_dict(list(stations_data))
-    print(stations_data)
-    print("#######")
-    print(station_locations)
+
+
+if __name__ == "__main__":
+    run_easy_pipeline()
+    
