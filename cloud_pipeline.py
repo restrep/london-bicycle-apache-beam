@@ -1,22 +1,19 @@
 import apache_beam as beam
 from apache_beam.options.pipeline_options import PipelineOptions
+from apache_beam.io.gcp.bigquery import ReadFromBigQuery, WriteToBigQuery
 from geopy.distance import geodesic
 
-# Sample test data to test locally
-stations_data = [
-    {'id': 1, 'latitude': 51.5, 'longitude': -0.1},
-    {'id': 2, 'latitude': 51.52, 'longitude': -0.12},
-    {'id': 3, 'latitude': 51.49, 'longitude': -0.11}
-]
 
-cycle_hire_data = [
-    {'start_station_id': 1, 'end_station_id': 2},
-    {'start_station_id': 1, 'end_station_id': 2},
-    {'start_station_id': 1, 'end_station_id': 3},
-    {'start_station_id': 2, 'end_station_id': 3},
-    {'start_station_id': 3, 'end_station_id': 1},
-    {'start_station_id': 3, 'end_station_id': 1}
-]
+project_options = PipelineOptions(
+        argv,
+        runner='DataflowRunner',
+        project='YOUR_PROJECT_ID',  # Replace with your GCP project ID
+        job_name='london-bikes-ml6',  # Give your job a descriptive name
+        temp_location='gs://YOUR_BUCKET/temp',  # Replace with your GCS bucket
+        region='europe-west1',  # Choose appropriate region
+        setup_file='./setup.py',  # Required for installing dependencies
+        requirements_file='requirements.txt'  # Specify Python package dependencies
+    )
 
 
 def calculate_station_distance(trip, stations_dict):
@@ -39,9 +36,7 @@ def calculate_station_distance(trip, stations_dict):
 
 # Define the pipeline
 def run_easy_pipeline():
-    options = PipelineOptions(
-        runner='DirectRunner'  # this is uset to run locally. On GCP we would use DataFlow
-    )
+    options = project_options
     
     with beam.Pipeline(options=options) as pipeline:
         
@@ -55,22 +50,40 @@ def run_easy_pipeline():
         )
 
 def run_hard_pipeline():
-    options = PipelineOptions(
-        runner='DirectRunner'  # this is uset to run locally. On GCP we would use DataFlow
-    )
+    options = project_options
     
     with beam.Pipeline(options=options) as pipeline:
 
         stations = (
             pipeline
-            | "Local stations" >> beam.Create(stations_data)
+            | 'Read station' >> ReadFromBigQuery(
+                query="""
+                    SELECT 
+                        id,
+                        latitude,
+                        longitude
+                    FROM `bigquery-public-data.london_bicycles.cycle_stations`
+                """,
+                use_standard_sql=True
+            )
             | 'Make station dict' >> beam.Map(
                 lambda row: (row['id'], (float(row['latitude']), float(row['longitude'])))
             ) )
         stations_dict = beam.pvalue.AsDict(stations)
 
-        cycle_hires = pipeline | "Local Cycle Hire Data" >> beam.Create(cycle_hire_data) # this is used to create data locally
-        
+
+        cycle_hires = (
+            pipeline 
+            | 'Read cycle hires' >> ReadFromBigQuery(
+                query="""
+                    SELECT 
+                        start_station_id,
+                        end_station_id
+                    FROM `bigquery-public-data.london_bicycles.cycle_hire`
+                """,
+                use_standard_sql=True
+            )
+        )
 
         # Process and aggregate distances
         station_distances = (
