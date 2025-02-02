@@ -4,15 +4,20 @@ from apache_beam.io.gcp.bigquery import ReadFromBigQuery, WriteToBigQuery
 from geopy.distance import geodesic
 
 
+# Define GCS bucket
+PROJECT_ID = "london-bicycle-apache-beam"
+BUCKET_NAME = "ml6-test-london-bikes"
+OUTPUT_PATH = f'gs://{BUCKET_NAME}/output'
+
 project_options = PipelineOptions(
-        argv,
         runner='DataflowRunner',
-        project='YOUR_PROJECT_ID',  # Replace with your GCP project ID
+        project=f"{PROJECT_ID}",  # Replace with your GCP project ID
         job_name='london-bikes-ml6',  # Give your job a descriptive name
-        temp_location='gs://YOUR_BUCKET/temp',  # Replace with your GCS bucket
-        region='europe-west1',  # Choose appropriate region
+        temp_location=f'gs://{BUCKET_NAME}/temp',  # Replace with your GCS bucket
+        region='europe-west10',  # Choose appropriate region
         setup_file='./setup.py',  # Required for installing dependencies
         requirements_file='requirements.txt'  # Specify Python package dependencies
+        region="europe-west10"
     )
 
 
@@ -39,14 +44,27 @@ def run_easy_pipeline():
     options = project_options
     
     with beam.Pipeline(options=options) as pipeline:
+
+        cycle_hires = (
+            pipeline 
+            | 'Read cycle hires' >> ReadFromBigQuery(
+                query="""
+                    SELECT 
+                        start_station_id,
+                        end_station_id
+                    FROM `bigquery-public-data.london_bicycles.cycle_hire`
+                """,
+                use_standard_sql=True
+            )
+        )
         
         ride_counts = (
-            pipeline
-            | "Local Cycle Hire Data" >> beam.Create(cycle_hire_data) # this is used to create data locally
+            cycle_hires
             | "Create Pairs" >> beam.Map(lambda x: (x['start_station_id'], x['end_station_id']))
             | "Count Rides" >> beam.combiners.Count.PerElement()
             | "Format Ride Output" >> beam.Map(lambda x: f"{x[0][0]},{x[0][1]},{x[1]}")
-            | "Print Ride Counts" >> beam.Map(print)  # print instead of writing to BigQuery or push to GCP
+            | 'WriteResults' >> beam.io.WriteToText(f"{OUTPUT_PATH}/easy_test", file_name_suffix='.txt', shard_name_template='')
+            #| "Print Ride Counts" >> beam.Map(print)  # print instead of writing to BigQuery or push to GCP
         )
 
 def run_hard_pipeline():
@@ -97,5 +115,5 @@ def run_hard_pipeline():
 
 if __name__ == "__main__":
     run_easy_pipeline()
-    run_hard_pipeline()
+    #run_hard_pipeline()
     
