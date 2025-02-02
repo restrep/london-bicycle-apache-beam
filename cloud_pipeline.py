@@ -1,7 +1,7 @@
 import apache_beam as beam
+from geopy.distance import geodesic
 from apache_beam.options.pipeline_options import PipelineOptions
 from apache_beam.io.gcp.bigquery import ReadFromBigQuery, WriteToBigQuery
-from geopy.distance import geodesic
 
 
 # Define GCS bucket
@@ -16,12 +16,13 @@ project_options = PipelineOptions(
         temp_location=f'gs://{BUCKET_NAME}/temp',  # Replace with your GCS bucket
         region='europe-west10',  # Choose appropriate region
         setup_file='./setup.py',  # Required for installing dependencies
-        requirements_file='requirements.txt'  # Specify Python package dependencies
-        region="europe-west10"
+        requirements_file='./requirements.txt'  # Specify Python package dependencies
     )
 
 
 def calculate_station_distance(trip, stations_dict):
+
+    #from geopy.distance import geodesic
 
     # get ids from the trip
     start_id = trip['start_station_id']
@@ -98,6 +99,7 @@ def run_hard_pipeline():
                         start_station_id,
                         end_station_id
                     FROM `bigquery-public-data.london_bicycles.cycle_hire`
+                    LIMIT 3000
                 """,
                 use_standard_sql=True
             )
@@ -107,13 +109,15 @@ def run_hard_pipeline():
         station_distances = (
             cycle_hires
             | "Calculate Distances" >> beam.Map(calculate_station_distance, stations_dict=stations_dict)
+            | "Filter None Values" >> beam.Filter(lambda x: x is not None)  # pipeline stops when calculate_distance return none
             | "Sum Distances" >> beam.CombinePerKey(sum)
             | "Format Distance Output" >> beam.Map(lambda x: f"{x[0][0]},{x[0][1]},{x[1]:.2f}")
-            | "Print Distasnces" >> beam.Map(print)  # Print instead of writing to BigQuery
+            | 'WriteResults' >> beam.io.WriteToText(f"{OUTPUT_PATH}/hard_test", file_name_suffix='.txt', shard_name_template='')
+            #| "Print Distasnces" >> beam.Map(print)  # Print instead of writing to BigQuery
        )
 
 
 if __name__ == "__main__":
-    run_easy_pipeline()
-    #run_hard_pipeline()
+    #run_easy_pipeline()
+    run_hard_pipeline()
     
