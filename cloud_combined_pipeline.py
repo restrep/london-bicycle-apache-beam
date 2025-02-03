@@ -32,8 +32,7 @@ cycle_hires_query = """
                         start_station_id,
                         end_station_id
                     FROM `bigquery-public-data.london_bicycles.cycle_hire`
-                    WHERE start_station_id IS NOT NULL
-                """
+                """  # WHERE start_station_id IS NOT NULL to make things faster
 
 
 def calculate_trip_distance(trip, stations_dict):
@@ -67,20 +66,20 @@ def run_combined_pipeline():
     with beam.Pipeline(options=options) as pipeline:
         stations = (
             pipeline
-            | "Read station" >> ReadFromBigQuery(query=stations_query, use_standard_sql=True)
-            | "Make station dict" >> beam.Map(lambda row: (row["id"], (float(row["latitude"]), float(row["longitude"]))))
+            | "Read Stations" >> ReadFromBigQuery(query=stations_query, use_standard_sql=True)
+            | "Make Stations Dict" >> beam.Map(lambda row: (row["id"], (float(row["latitude"]), float(row["longitude"]))))
         )
 
         stations_dict = beam.pvalue.AsDict(stations)  # store as side input
 
-        cycle_hire = pipeline | "Read cycle hires" >> ReadFromBigQuery(query=cycle_hires_query, use_standard_sql=True)
+        cycle_hire = pipeline | "Read Cycle Hires" >> ReadFromBigQuery(query=cycle_hires_query, use_standard_sql=True)
 
         trip_data = cycle_hire | "Calculate Trip Data" >> beam.Map(calculate_trip_distance, stations_dict=stations_dict)
 
         # Easy test
         easy_output = (
             trip_data
-            | "Get pais" >> beam.Map(lambda x: (x[0][0], x[0][1]))  # Keep only station pairs and ride count
+            | "Get Pairs" >> beam.Map(lambda x: (x[0][0], x[0][1]))  # Keep only station pairs and ride count
             | "Count Rides" >> beam.combiners.Count.PerElement()
             | "Format Easy Output" >> beam.Map(format_easy_output)
             | "Write Easy Results" >> beam.io.WriteToText(f"{OUTPUT_PATH}/easy_test", file_name_suffix=".txt", shard_name_template="")
@@ -97,3 +96,4 @@ def run_combined_pipeline():
 
 if __name__ == "__main__":
     run_combined_pipeline()
+    
