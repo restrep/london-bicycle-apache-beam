@@ -22,7 +22,7 @@ project_options = PipelineOptions(
 
 def calculate_station_distance(trip, stations_dict):
 
-    #from geopy.distance import geodesic
+    from geopy.distance import geodesic
 
     # get ids from the trip
     start_id = trip['start_station_id']
@@ -99,7 +99,6 @@ def run_hard_pipeline():
                         start_station_id,
                         end_station_id
                     FROM `bigquery-public-data.london_bicycles.cycle_hire`
-                    LIMIT 3000
                 """,
                 use_standard_sql=True
             )
