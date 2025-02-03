@@ -52,6 +52,7 @@ def calculate_trip_distance(trip, stations_dict):
         distance = geodesic(start_location, end_location).kilometers  # geopy hint from ML6 from the setup.py
     return ((start_id, end_id), (1, distance))  # adding the one as in split pipeline to get both results at onces
 
+
 def format_easy_output(x):
     return f"{x[0][0]},{x[0][1]},{x[1]}"
 
@@ -74,12 +75,12 @@ def run_combined_pipeline():
 
         cycle_hire = pipeline | "Read cycle hires" >> ReadFromBigQuery(query=cycle_hires_query, use_standard_sql=True)
 
-        trip_data = cycle_hire| "Calculate Trip Data" >> beam.Map(calculate_trip_distance, stations_dict=stations_dict)
+        trip_data = cycle_hire | "Calculate Trip Data" >> beam.Map(calculate_trip_distance, stations_dict=stations_dict)
 
         # Easy test
         easy_output = (
             trip_data
-            | "Get pais" >> beam.Map(lambda x: (x[0][0], x[0][1]))   # Keep only station pairs and ride count
+            | "Get pais" >> beam.Map(lambda x: (x[0][0], x[0][1]))  # Keep only station pairs and ride count
             | "Count Rides" >> beam.combiners.Count.PerElement()
             | "Format Easy Output" >> beam.Map(format_easy_output)
             | "Write Easy Results" >> beam.io.WriteToText(f"{OUTPUT_PATH}/easy_test", file_name_suffix=".txt", shard_name_template="")
@@ -88,7 +89,7 @@ def run_combined_pipeline():
         # Hard test
         hard_output = (
             trip_data
-            | "Group by Trip">> beam.CombinePerKey(lambda values: tuple(map(sum, zip(*values))))
+            | "Group by Trip" >> beam.CombinePerKey(lambda values: tuple(map(sum, zip(*values))))
             | "Format Hard Output" >> beam.Map(format_hard_output)
             | "Write Hard Results" >> beam.io.WriteToText(f"{OUTPUT_PATH}/hard_test", file_name_suffix=".txt", shard_name_template="")
         )
