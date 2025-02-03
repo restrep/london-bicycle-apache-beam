@@ -74,7 +74,11 @@ def run_combined_pipeline():
 
         cycle_hire = pipeline | "Read Cycle Hires" >> ReadFromBigQuery(query=cycle_hires_query, use_standard_sql=True)
 
-        trip_data = cycle_hire | "Calculate Trip Data" >> beam.Map(calculate_trip_distance, stations_dict=stations_dict)
+        trip_data = (
+            cycle_hire
+            | "Calculate Trip Data" >> beam.Map(calculate_trip_distance, stations_dict=stations_dict)
+            | "Filter Nones" >> beam.Filter(lambda x: x is not None and x[0][0] is not None and x[0][1] is not None) # this should be done at the query!
+        )
 
         # Easy test
         easy_output = (
