@@ -32,7 +32,7 @@ setup(
 
 gsutil cp hard_test.txt gs://ml6-hard/output/hard.txt
 
-gsutil cp hard_test.txt gs://ml6-easy/output/easy.txt
+gsutil cp easy_test.txt gs://ml6-easy/output/easy.txt
 
 gsutil cp gs://ml6-test-london-bikes/output/hard_test.txt .
 

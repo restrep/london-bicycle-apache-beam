@@ -67,7 +67,8 @@ def run_combined_pipeline():
         stations = (
             pipeline
             | "Read Stations" >> ReadFromBigQuery(query=stations_query, use_standard_sql=True)
-            | "Make Stations Dict" >> beam.Map(lambda row: (row["id"], (float(row["latitude"]), float(row["longitude"]))))
+            | "Make Stations Dict"
+            >> beam.Map(lambda row: (row["id"], (float(row["latitude"]), float(row["longitude"]))))
         )
 
         stations_dict = beam.pvalue.AsDict(stations)  # store as side input
@@ -77,7 +78,10 @@ def run_combined_pipeline():
         trip_data = (
             cycle_hire
             | "Calculate Trip Data" >> beam.Map(calculate_trip_distance, stations_dict=stations_dict)
-            | "Filter Nones" >> beam.Filter(lambda x: x is not None and x[0][0] is not None and x[0][1] is not None) # this should be done at the query!
+            | "Filter Nones"
+            >> beam.Filter(
+                lambda x: x is not None and x[0][0] is not None and x[0][1] is not None
+            )  # this should be done at the query!
         )
 
         # Easy test
@@ -86,7 +90,8 @@ def run_combined_pipeline():
             | "Get Pairs" >> beam.Map(lambda x: (x[0][0], x[0][1]))  # Keep only station pairs and ride count
             | "Count Rides" >> beam.combiners.Count.PerElement()
             | "Format Easy Output" >> beam.Map(format_easy_output)
-            | "Write Easy Results" >> beam.io.WriteToText(f"{OUTPUT_PATH}/easy_test", file_name_suffix=".txt", shard_name_template="")
+            | "Write Easy Results"
+            >> beam.io.WriteToText(f"{OUTPUT_PATH}/easy_test", file_name_suffix=".txt", shard_name_template="")
         )
 
         # Hard test
@@ -94,10 +99,10 @@ def run_combined_pipeline():
             trip_data
             | "Group by Trip" >> beam.CombinePerKey(lambda values: tuple(map(sum, zip(*values))))
             | "Format Hard Output" >> beam.Map(format_hard_output)
-            | "Write Hard Results" >> beam.io.WriteToText(f"{OUTPUT_PATH}/hard_test", file_name_suffix=".txt", shard_name_template="")
+            | "Write Hard Results"
+            >> beam.io.WriteToText(f"{OUTPUT_PATH}/hard_test", file_name_suffix=".txt", shard_name_template="")
         )
 
 
 if __name__ == "__main__":
     run_combined_pipeline()
-    
