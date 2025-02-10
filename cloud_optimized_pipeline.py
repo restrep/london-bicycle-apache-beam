@@ -10,12 +10,12 @@ OUTPUT_PATH = f"gs://{BUCKET_NAME}/output"
 
 project_options = PipelineOptions(
     runner="DataflowRunner",
-    project=f"{PROJECT_ID}",  # Replace with your GCP project ID
-    job_name="optimized-pipeline",  # Give your job a descriptive name
-    temp_location=f"gs://{BUCKET_NAME}/temp",  # Replace with your GCS bucket
-    region="europe-west10",  # Choose appropriate region
-    setup_file="./setup.py",  # Required for installing dependencies
-    requirements_file="./requirements.txt",  # Specify Python package dependencies
+    project=f"{PROJECT_ID}",  
+    job_name="optimized-pipeline",  
+    temp_location=f"gs://{BUCKET_NAME}/temp",  
+    region="europe-west10", 
+    setup_file="./setup.py",  
+    requirements_file="./requirements.txt", 
 )
 
 
